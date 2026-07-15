@@ -3,7 +3,7 @@
 This folder holds the single input to the analysis: the Mendeley Data workbook.
 
 1. Download `Stream_sound_augmentation_traffic_VR_data.xlsx` from Mendeley Data —
-   **DOI: _to be assigned on dataset publication_** (CC BY 4.0).
+   **DOI [10.17632/v77ydkjwvn](https://doi.org/10.17632/v77ydkjwvn)** (CC BY 4.0).
 2. Place the `.xlsx` file in this `data/` folder.
 3. From the repository root, run `Rscript run_all.R`.
 

@@ -20,7 +20,7 @@ R code for reproducing the statistical analyses, figures and tables for the manu
 The analysis reads a single input: the Mendeley Data workbook
 `Stream_sound_augmentation_traffic_VR_data.xlsx`.
 
-1. Download it from Mendeley Data, **DOI: _to be assigned on dataset publication_** (CC BY 4.0).
+1. Download it from Mendeley Data, **DOI [10.17632/v77ydkjwvn](https://doi.org/10.17632/v77ydkjwvn)** (CC BY 4.0).
 2. Place the `.xlsx` file in the `data/` folder (see `data/README.md`).
 
 The workbook's `analysis_data` sheet is the analysis-ready table (400 rows =
