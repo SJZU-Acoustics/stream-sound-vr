@@ -1,0 +1,19 @@
+# Data
+
+This folder holds the single input to the analysis: the Mendeley Data workbook.
+
+1. Download `Stream_sound_augmentation_traffic_VR_data.xlsx` from Mendeley Data —
+   **DOI: _to be assigned on dataset publication_** (CC BY 4.0).
+2. Place the `.xlsx` file in this `data/` folder.
+3. From the repository root, run `Rscript run_all.R`.
+
+The workbook contains a README sheet, a sheet summary, the analysis-ready data
+table (`analysis_data`, 400 rows × 72 columns — one row per participant ×
+condition), a variable dictionary and a value-code map. `load_data.R` reads the
+`analysis_data` sheet; the remaining sheets are documentation.
+
+The workbook itself is not stored in this repository — it is openly archived at
+the DOI above. Raw EEG/EDA recordings, the window-level EEG series and the VR
+scene/audio stimuli are not part of this deposit (available from the authors on
+reasonable request); the per-condition summaries needed to reproduce every
+display item are all in the workbook.
