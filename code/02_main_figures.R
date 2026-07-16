@@ -154,8 +154,6 @@ p1c <- ggplot(design_grid, aes(stream, y, fill = stream)) +
            family = "Arial", size = 2.8, fontface = "bold") +
   annotate("text", x = 1.5, y = 0.15, label = "Within person; Latin-square order",
            family = "Arial", size = 2.45, colour = COL_MID) +
-  annotate("text", x = 1.5, y = -0.35, label = "EEG n = 39  |  EDA n = 43 (supporting)",
-           family = "Arial", size = 2.25, colour = COL_MID) +
   scale_fill_manual(values = c(Off = "#E3E3E3", On = "#B9DFF2"), guide = "none") +
   scale_x_discrete(position = "top", labels = c("No stream", "Stream")) +
   scale_y_continuous(breaks = NULL) +
