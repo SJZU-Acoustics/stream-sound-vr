@@ -61,24 +61,19 @@ write_display_table <- function(df, stem, widths_cm) {
   writeLines(lines, file.path(TABLE_DIR, paste0(stem, ".tex")))
 }
 
-# Table S1: the design and inferential contract.
+# Table S1: participant and modality coverage (usable samples and the
+# pre-analysis exclusions behind them). Counts reconcile as 34 + 5 = 39 EEG,
+# 34 + 9 = 43 EDA, and 34 + 5 + 9 + 2 = 50; exclusion reasons are from the first
+# author's data-provenance note (data/from-author-2026-06-30/).
 s1 <- tribble(
-  ~Component, ~Locked_specification, ~Role_in_the_paper,
-  "Sample", "50 participants for subjective outcomes; 39 with usable EEG; 43 with usable EDA", "Defines the denominator for each evidence stream",
-  "Design", "Within-participant 4 x 2 experiment: traffic at 54, 57, 60, and 63 dB(A), each without and with the same stream recording", "Tests the intervention across the observed traffic gradient",
-  "Stream treatment", "One stream recording presented at -3 dB signal-to-noise ratio relative to traffic", "Fixed augmentation; not a dose-response comparison",
-  "Context", "One Zhongshan Square virtual environment, short controlled exposures, and a young-adult sample", "Defines the boundary of inference",
-  "RQ1 primary outcome", "ISO pleasantness score; pooled stream effect from a mixed model with participant intercepts", "Answers whether augmentation improves affective appraisal",
-  "RQ1 level dependence", "One continuous stream-by-SPL interaction; participant-cluster bootstrap for the pooled interval", "Tests whether benefit changes over the observed gradient",
-  "Multiplicity", "Holm correction across the frozen family of 11 subjective outcomes: ISO score, two convergent ratings, and eight attributes", "Prevents exploratory significance from becoming separate storylines",
-  "RQ2 structure", "PCA of eight attributes, with signs fixed so PC1 is valence-like and PC2 activation-like; direct paired PC1-PC2 contrast", "Tests which experiential dimension changes primarily",
-  "RQ2 sensitivity", "Transparent ISO-derived valence and activation proxies reported alongside the data-derived axes", "Shows that the dimensional conclusion depends on representation",
-  "RQ3 reach", "Participant mean effects and exact binomial interval", "Quantifies how widely benefit is observed",
-  "RQ3 predictability", "Participant-held-out predictions for universal, personal-trial, trait, baseline-state, and combined-profile strategies", "Tests whether selective delivery improves on universal provision",
-  "Resampling", "1,000 participant-cluster bootstrap replicates; random seed 170715", "Preserves within-participant dependence and reproducibility",
-  "Physiology", "Paired standardised stream effects with 90% intervals, calibrated against SPL sensitivity", "Supporting evidence only; not used to adjudicate mechanism"
+  ~Evidence_stream, ~Usable_participants, ~Coverage_and_exclusions,
+  "Subjective questionnaire", "50", "All recruited participants completed the eight-condition protocol with usable ISO pleasantness and attribute ratings; the denominator for every subjective outcome.",
+  "EEG", "39", "Eleven participants excluded before analysis: two whose headset was displaced mid-session, leaving no complete recording, and nine with over 20% invalid electrodes or large head-motion artefacts that band-pass filtering and independent-component analysis could not separate.",
+  "EDA", "43", "Seven participants excluded before analysis: the same two with displaced sensors, and five whose usable signal fell below 60% of the recording or whose artefacts (poor contact, motion, mains interference) left skin-conductance-level extraction unreliable.",
+  "EEG and EDA", "34", "Participants with both physiological streams usable; the complete-case basis for any analysis requiring both modalities.",
+  "Questionnaire only", "2", "Participants A-1 and A-31, whose EEG and EDA sensors were both displaced mid-session; their subjective ratings were retained."
 )
-write_display_table(s1, "Table_S1_design_and_inference", c(3.0, 7.8, 4.6))
+write_display_table(s1, "Table_S1_participant_coverage", c(3.4, 2.4, 9.6))
 
 # Table S2: RQ1 estimates, robustness, and multiplicity screen.
 rq1_summary <- read.csv(file.path(LOCK_DIR, "rq1_summary.csv"), check.names = FALSE)
