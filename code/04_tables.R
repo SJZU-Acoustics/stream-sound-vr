@@ -70,7 +70,7 @@ s1 <- tribble(
   "Subjective questionnaire", "50", "All recruited participants completed the eight-condition protocol with usable ISO pleasantness and attribute ratings; the denominator for every subjective outcome.",
   "EEG", "39", "Eleven participants excluded before analysis: two whose headset was displaced mid-session, leaving no complete recording, and nine with over 20% invalid electrodes or large head-motion artefacts that band-pass filtering and independent-component analysis could not separate.",
   "EDA", "43", "Seven participants excluded before analysis: the same two with displaced sensors, and five whose usable signal fell below 60% of the recording or whose artefacts (poor contact, motion, mains interference) left skin-conductance-level extraction unreliable.",
-  "EEG and EDA", "34", "Participants with both physiological streams usable; the complete-case basis for any analysis requiring both modalities.",
+  "EEG and EDA", "34", "Participants with both physiological measures usable; the complete-case basis for any analysis requiring both modalities.",
   "Questionnaire only", "2", "Participants A-1 and A-31, whose EEG and EDA sensors were both displaced mid-session; their subjective ratings were retained."
 )
 write_display_table(s1, "Table_S1_participant_coverage", c(3.4, 2.4, 9.6))
@@ -175,9 +175,9 @@ effect_labels <- c(
   PC1 = "Valence-like axis (PC1)",
   PC2 = "Activation-like axis (PC2)",
   PCA_contrast = "Direct PC1-PC2 contrast",
-  ISO = "Transparent ISO valence proxy",
-  activation_proxy = "Transparent activation proxy",
-  transparent_contrast = "Direct transparent-proxy contrast"
+  ISO = "Simple ISO valence proxy",
+  activation_proxy = "Simple activation proxy",
+  transparent_contrast = "Direct simple-proxy contrast"
 )
 s3_effects <- rq2_effects |>
   mutate(

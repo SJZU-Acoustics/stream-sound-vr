@@ -194,7 +194,7 @@ outcome_screen <- map_dfr(screen_vars, function(y) {
     family = case_when(
       outcome == "iso_pleasant" ~ "Primary",
       outcome %in% c("e", "f") ~ "Convergent",
-      TRUE ~ "Attribute screen"
+      TRUE ~ "Attribute"
     ),
     holm_significant = p_holm < 0.05
   )
@@ -554,9 +554,9 @@ physiology <- pmap_dfr(marker_defs, function(variable, measure, kind) {
     water_lo90 = q_ci(dz_bs, 0.90)[1], water_hi90 = q_ci(dz_bs, 0.90)[2],
     spl_p = aa["spl_f", "Pr(>F)"], spl_partial_eta2 = peta,
     interpretation = case_when(
-      kind == "Subjective reference" & spl_p < 0.05 & variable == "iso_pleasant" ~ "SPL-sensitive; stream-responsive",
-      kind == "Subjective reference" & spl_p < 0.05 ~ "SPL-sensitive; stream estimate near zero",
-      TRUE ~ "SPL-insensitive here; stream estimate is not mechanistically diagnostic"
+      kind == "Subjective reference" & spl_p < 0.05 & variable == "iso_pleasant" ~ "Sensitive to SPL; responds to the stream",
+      kind == "Subjective reference" & spl_p < 0.05 ~ "Sensitive to SPL; stream estimate near zero",
+      TRUE ~ "Not sensitive to SPL here, so the stream estimate cannot inform mechanism"
     )
   )
 })

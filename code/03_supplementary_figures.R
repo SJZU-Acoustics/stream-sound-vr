@@ -13,14 +13,14 @@ screen_order <- c("ISO pleasantness", "Annoying - pleasant", "Noisy - calm",
 screen <- screen |>
   mutate(
     label = factor(label, levels = rev(screen_order)),
-    family = factor(family, levels = c("Primary", "Convergent", "Attribute screen"))
+    family = factor(family, levels = c("Primary", "Convergent", "Attribute"))
   )
 pS1a <- ggplot(screen, aes(dz, label)) +
   geom_vline(xintercept = 0, colour = COL_MID, linewidth = 0.35) +
   geom_errorbar(aes(xmin = lo, xmax = hi, colour = family), orientation = "y", width = 0, linewidth = 0.7) +
   geom_point(aes(colour = family, shape = holm_significant), size = 2.5, stroke = 0.75, fill = "white") +
   scale_colour_manual(values = c("Primary" = COL_BLUE, "Convergent" = COL_GREEN,
-                                 "Attribute screen" = COL_MID)) +
+                                 "Attribute" = COL_MID)) +
   scale_shape_manual(values = c(`TRUE` = 19, `FALSE` = 21),
                      labels = c(`TRUE` = "Holm P < .05", `FALSE` = "Holm P ≥ .05")) +
   scale_x_continuous(limits = c(-0.82, 0.82), breaks = c(-0.8, -0.4, 0, 0.4, 0.8)) +
@@ -71,13 +71,13 @@ effect_data <- dim_eff |>
     label = recode(metric, PC1 = "Valence PC1", PC2 = "Activation PC2",
                    ISO = "ISO valence", activation_proxy = "Activation composite"),
     label = factor(label, levels = rev(c("Valence PC1", "Activation PC2", "ISO valence", "Activation composite"))),
-    definition = if_else(metric %in% c("PC1", "PC2"), "Orthogonal PCA", "Transparent composite")
+    definition = if_else(metric %in% c("PC1", "PC2"), "Orthogonal PCA", "Simple composite")
   )
 pS2b <- ggplot(effect_data, aes(estimate, label)) +
   geom_vline(xintercept = 0, colour = COL_MID, linewidth = 0.35) +
   geom_errorbar(aes(xmin = lo, xmax = hi, colour = definition), orientation = "y", width = 0, linewidth = 0.75) +
   geom_point(aes(colour = definition), size = 2.7) +
-  scale_colour_manual(values = c("Orthogonal PCA" = COL_BLUE, "Transparent composite" = COL_ORANGE)) +
+  scale_colour_manual(values = c("Orthogonal PCA" = COL_BLUE, "Simple composite" = COL_ORANGE)) +
   scale_x_continuous(limits = c(-0.2, 0.48), breaks = c(-0.2, 0, 0.2, 0.4)) +
   labs(x = "Standardised stream effect", y = NULL) +
   theme_p17() + theme(legend.position = "bottom")
