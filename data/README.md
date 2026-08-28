@@ -7,13 +7,16 @@ This folder holds the single input to the analysis: the Mendeley Data workbook.
 2. Place the `.xlsx` file in this `data/` folder.
 3. From the repository root, run `Rscript run_all.R`.
 
-The workbook contains a README sheet, a sheet summary, the analysis-ready data
-table (`analysis_data`, 400 rows × 72 columns — one row per participant ×
-condition), a variable dictionary and a value-code map. `load_data.R` reads the
-`analysis_data` sheet; the remaining sheets are documentation.
+The workbook has seven sheets: a README sheet, a sheet summary, the
+analysis-ready data table (`analysis_data`, 400 rows × 72 columns — one row per
+participant × condition), the window-level EEG series (`eeg_window_series`,
+404,976 rows) and the EDA signal series (`eda_signal_series`, 165,120 rows)
+from which the per-condition physiological summaries were derived, a variable
+dictionary and a value-code map. `load_data.R` reads the `analysis_data` sheet
+only; the other sheets are documentation and provenance.
 
 The workbook itself is not stored in this repository — it is openly archived at
-the DOI above. Raw EEG/EDA recordings, the window-level EEG series and the VR
-scene/audio stimuli are not part of this deposit (available from the authors on
-reasonable request); the per-condition summaries needed to reproduce every
-display item are all in the workbook.
+the DOI above. Raw EEG/EDA recordings and the VR scene/audio stimuli are not
+part of this deposit (available from the authors on reasonable request); the
+per-condition summaries needed to reproduce every display item are all in the
+workbook.

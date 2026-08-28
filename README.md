@@ -23,18 +23,22 @@ The analysis reads a single input: the Mendeley Data workbook
 1. Download it from Mendeley Data, **DOI [10.17632/v77ydkjwvn](https://doi.org/10.17632/v77ydkjwvn)** (CC BY 4.0).
 2. Place the `.xlsx` file in the `data/` folder (see `data/README.md`).
 
-The workbook's `analysis_data` sheet is the analysis-ready table (400 rows =
-50 participants × 8 conditions, 72 columns) that underlies every figure and
-table. The raw EEG/EDA recordings, the window-level EEG series and the VR
-scene/audio stimuli are not redistributed (available from the authors on
-reasonable request).
+The workbook has seven sheets. Its `analysis_data` sheet is the analysis-ready
+table (400 rows = 50 participants × 8 conditions, 72 columns) that underlies
+every figure and table, and it is the only sheet the code reads. The workbook
+also carries the window-level EEG series (`eeg_window_series`, 404,976 rows) and
+the EDA signal series (`eda_signal_series`, 165,120 rows) from which the
+per-condition physiological summaries in `analysis_data` were derived, plus a
+README sheet, a sheet summary, a variable dictionary and a value-code map. The
+raw EEG/EDA recordings and the VR scene/audio stimuli are not redistributed
+(available from the authors on reasonable request).
 
 ## File structure
 
 - `run_all.R` — master script: loads the workbook, runs the synthesis, and writes every manuscript figure and table.
 - `load_data.R` — reads the `analysis_data` sheet from the workbook into `intermediate/`.
 - `code/00_setup.R` — shared paths, plotting theme, helper functions, the random seed and the bootstrap replicate count.
-- `code/01_synthesis_lock.R` — the fixed synthesis: PCA of the attribute space and every RQ1–RQ3 estimand (pooled and per-level stream effects, outcome-family screen, dimensional contrasts and bounded design translation, reach/stability/held-out-prediction, physiology calibration), plus the manuscript result macros. Performs no outcome search.
+- `code/01_synthesis_lock.R` — the fixed synthesis: PCA of the attribute space and every RQ1–RQ3 estimand (pooled and per-level stream effects, the Holm-corrected comparison across the eleven subjective outcomes, dimensional contrasts and the +3 dB response-vector comparison within the tested range, reach/stability/held-out prediction, the physiology sensitivity check), plus the manuscript result macros. Performs no outcome search.
 - `code/02_main_figures.R` — Figures 1–4.
 - `code/03_supplementary_figures.R` — Supplementary Figures S1–S3.
 - `code/04_tables.R` — Supplementary Tables S1–S5 (LaTeX fragments and CSV).
