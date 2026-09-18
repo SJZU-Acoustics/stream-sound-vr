@@ -4,9 +4,11 @@
 source("code/00_setup.R")
 
 ATTR <- paste0("a", 1:8)
+# The eight items are the Mandarin ISO/TS 12913-2 attributes of Li et al. (2024,
+# Applied Acoustics 215:109728, Table 3); labels use the ISO English names.
 ATTR_LABELS <- c(
-  a1 = "Pleasant", a2 = "Noisy/chaotic", a3 = "Lively", a4 = "Bland",
-  a5 = "Calm", a6 = "Annoying", a7 = "Immersive", a8 = "Dull"
+  a1 = "Pleasant", a2 = "Chaotic", a3 = "Vibrant", a4 = "Uneventful",
+  a5 = "Calm", a6 = "Annoying", a7 = "Eventful", a8 = "Monotonous"
 )
 
 d <- readr::read_csv(DATA_FILE, show_col_types = FALSE) |>
@@ -40,7 +42,11 @@ d <- d |>
     PC2z = as.numeric(scale(PC2)),
     activation = ((a3 + a7) / 2) - ((a4 + a8) / 2),
     activation_z = as.numeric(scale(activation)),
-    iso_z = as.numeric(scale(iso_pleasant))
+    iso_z = as.numeric(scale(iso_pleasant)),
+    # Standard ISO 12913-3 eventfulness coordinate (post-review sensitivity,
+    # 2026-09-18): (eventful - uneventful) + cos45 (chaotic - calm) + cos45 (vibrant - monotonous).
+    iso_eventful = (a7 - a4) + cos(pi / 4) * (a2 - a5) + cos(pi / 4) * (a3 - a8),
+    event_z = as.numeric(scale(iso_eventful))
   )
 
 pca_loadings <- as_tibble(rot, rownames = "attribute") |>
@@ -167,9 +173,8 @@ write_csv(positive_summary, file.path(LOCK_DIR, "rq1_positive_summary.csv"))
 # Outcome-family screen, with one Holm adjustment across the frozen 11 outcomes.
 screen_vars <- c("iso_pleasant", "e", "f", ATTR)
 screen_labels <- c(
-  iso_pleasant = "ISO pleasantness", e = "Annoying - pleasant", f = "Noisy - calm",
-  a1 = "Pleasant", a2 = "Noisy/chaotic", a3 = "Lively", a4 = "Bland",
-  a5 = "Calm", a6 = "Annoying", a7 = "Immersive", a8 = "Dull"
+  iso_pleasant = "ISO pleasantness", e = "Annoying - pleasant", f = "Chaotic - calm",
+  ATTR_LABELS
 )
 
 outcome_screen <- map_dfr(screen_vars, function(y) {
@@ -209,27 +214,45 @@ boot_location <- replicate(B, {
 }) |>
   t()
 loo <- map_dbl(seq_along(x_iso), ~mean(x_iso[-.x]))
+
+# Post-review sensitivity (2026-09-18): the same pooled contrast from a model
+# that also lets the stream effect vary by participant. Deterministic, so it
+# does not disturb the bootstrap stream below.
+m_iso_slope <- lmm(iso_pleasant ~ spl_f * water_f + (1 + water_f | id), d)
+slope_emm <- as.data.frame(summary(
+  pairs(emmeans(m_iso_slope, ~ water_f), reverse = TRUE), infer = c(TRUE, TRUE)
+))
+slope_sd <- as.data.frame(VarCorr(m_iso_slope)) |>
+  filter(grp == "id", var1 == "water_fStream", is.na(var2)) |>
+  pull(sdcor)
+
 rq1_robustness <- tibble(
-  method = c("Participant mean", "Median", "20% trimmed mean", "Leave-one-out mean"),
-  estimate = c(mean(x_iso), median(x_iso), mean(x_iso, trim = 0.2), mean(x_iso)),
+  method = c("Participant mean", "Median", "20% trimmed mean", "Leave-one-out mean",
+             "Participant-specific stream slopes"),
+  estimate = c(mean(x_iso), median(x_iso), mean(x_iso, trim = 0.2), mean(x_iso),
+               slope_emm$estimate),
   lo = c(q_ci(boot_location[, "mean"])[1], q_ci(boot_location[, "median"])[1],
-         q_ci(boot_location[, "trimmed"])[1], min(loo)),
+         q_ci(boot_location[, "trimmed"])[1], min(loo), slope_emm$lower.CL),
   hi = c(q_ci(boot_location[, "mean"])[2], q_ci(boot_location[, "median"])[2],
-         q_ci(boot_location[, "trimmed"])[2], max(loo)),
-  interval = c("95% bootstrap CI", "95% bootstrap CI", "95% bootstrap CI", "range")
+         q_ci(boot_location[, "trimmed"])[2], max(loo), slope_emm$upper.CL),
+  interval = c("95% bootstrap CI", "95% bootstrap CI", "95% bootstrap CI", "range",
+               "95% model CI"),
+  p = c(NA_real_, NA_real_, NA_real_, NA_real_, slope_emm$p.value),
+  note = c("", "", "", "", sprintf("SD of participant slopes %.2f", slope_sd))
 )
 write_csv(rq1_robustness, file.path(LOCK_DIR, "rq1_robustness.csv"))
 
 # -----------------------------------------------------------------------------
 # RQ2: direct orthogonal-dimension contrast and bounded design translation.
 dim_pair <- d |>
-  select(id, spl_db, water, PC1z, PC2z, activation_z, iso_z) |>
-  pivot_wider(names_from = water, values_from = c(PC1z, PC2z, activation_z, iso_z)) |>
+  select(id, spl_db, water, PC1z, PC2z, activation_z, iso_z, event_z) |>
+  pivot_wider(names_from = water, values_from = c(PC1z, PC2z, activation_z, iso_z, event_z)) |>
   mutate(
     d_pc1 = PC1z_1 - PC1z_0,
     d_pc2 = PC2z_1 - PC2z_0,
     d_activation = activation_z_1 - activation_z_0,
-    d_iso = iso_z_1 - iso_z_0
+    d_iso = iso_z_1 - iso_z_0,
+    d_event = event_z_1 - event_z_0
   ) |>
   group_by(id) |>
   summarise(across(starts_with("d_"), mean), .groups = "drop")
@@ -241,7 +264,9 @@ dim_boot <- apply(boot_dim_idx, 2, function(i) {
     PC1 = mean(z$d_pc1), PC2 = mean(z$d_pc2),
     PCA_contrast = mean(z$d_pc1 - z$d_pc2),
     ISO = mean(z$d_iso), activation_proxy = mean(z$d_activation),
-    transparent_contrast = mean(z$d_iso - z$d_activation)
+    transparent_contrast = mean(z$d_iso - z$d_activation),
+    ISO_eventful = mean(z$d_event),
+    iso_pair_contrast = mean(z$d_iso - z$d_event)
   )
 }) |>
   t()
@@ -250,7 +275,9 @@ dim_points <- c(
   PC1 = mean(dim_pair$d_pc1), PC2 = mean(dim_pair$d_pc2),
   PCA_contrast = mean(dim_pair$d_pc1 - dim_pair$d_pc2),
   ISO = mean(dim_pair$d_iso), activation_proxy = mean(dim_pair$d_activation),
-  transparent_contrast = mean(dim_pair$d_iso - dim_pair$d_activation)
+  transparent_contrast = mean(dim_pair$d_iso - dim_pair$d_activation),
+  ISO_eventful = mean(dim_pair$d_event),
+  iso_pair_contrast = mean(dim_pair$d_iso - dim_pair$d_event)
 )
 
 dimension_effects <- tibble(
@@ -260,10 +287,28 @@ dimension_effects <- tibble(
     t.test(dim_pair$d_pc1)$p.value, t.test(dim_pair$d_pc2)$p.value,
     t.test(dim_pair$d_pc1 - dim_pair$d_pc2)$p.value,
     t.test(dim_pair$d_iso)$p.value, t.test(dim_pair$d_activation)$p.value,
-    t.test(dim_pair$d_iso - dim_pair$d_activation)$p.value
+    t.test(dim_pair$d_iso - dim_pair$d_activation)$p.value,
+    t.test(dim_pair$d_event)$p.value,
+    t.test(dim_pair$d_iso - dim_pair$d_event)$p.value
   )
 )
 write_csv(dimension_effects, file.path(LOCK_DIR, "rq2_dimension_effects.csv"))
+
+# Correlations between the dimensional representations over the 400 ratings:
+# the reason the orthogonal components, not the simple composite, carry the
+# dimension inference.
+representation_correlations <- tibble(
+  pair = c("Simple activation composite vs ISO pleasantness",
+           "ISO eventfulness vs ISO pleasantness",
+           "PC2 vs simple activation composite",
+           "PC2 vs ISO eventfulness",
+           "PC1 vs ISO pleasantness",
+           "PC2 vs ISO pleasantness"),
+  r = c(cor(d$activation_z, d$iso_z), cor(d$event_z, d$iso_z),
+        cor(d$PC2z, d$activation_z), cor(d$PC2z, d$event_z), cor(d$PC1z, d$iso_z),
+        cor(d$PC2z, d$iso_z))
+)
+write_csv(representation_correlations, file.path(LOCK_DIR, "rq2_representation_correlations.csv"))
 
 # Balanced within-person coefficients for response geometry.
 participant_coefficients <- function(data, y) {
@@ -563,6 +608,103 @@ physiology <- pmap_dfr(marker_defs, function(variable, measure, kind) {
 write_csv(physiology, file.path(LOCK_DIR, "physiology_calibration.csv"))
 
 # -----------------------------------------------------------------------------
+# Post-review sensitivity analyses (2026-09-18). Added after the second external
+# AI review; they were not part of the declared synthesis and are placed after
+# every declared random draw so that no frozen number above can move.
+
+# RQ2 (a): PCA on ratings centred within participant, so the axes come from
+# within-person covariance only; (b) PCA re-estimated inside each bootstrap
+# replicate, so axis uncertainty enters the contrast interval.
+d_within <- d |>
+  group_by(id) |>
+  mutate(across(all_of(ATTR), ~ .x - mean(.x))) |>
+  ungroup()
+pc_w <- prcomp(d_within[, ATTR], center = TRUE, scale. = TRUE)
+sw1 <- sign(pc_w$rotation["a1", 1])
+sw2 <- sign(pc_w$rotation["a3", 2])
+d_within <- d_within |>
+  mutate(W1z = as.numeric(scale(pc_w$x[, 1] * sw1)),
+         W2z = as.numeric(scale(pc_w$x[, 2] * sw2)))
+within_pair <- d_within |>
+  select(id, spl_db, water, W1z, W2z) |>
+  pivot_wider(names_from = water, values_from = c(W1z, W2z)) |>
+  mutate(d_w1 = W1z_1 - W1z_0, d_w2 = W2z_1 - W2z_0) |>
+  group_by(id) |>
+  summarise(d_w1 = mean(d_w1), d_w2 = mean(d_w2), .groups = "drop")
+within_boot <- apply(boot_dim_idx, 2, function(i) {
+  z <- within_pair[i, ]
+  c(W1 = mean(z$d_w1), W2 = mean(z$d_w2), contrast = mean(z$d_w1 - z$d_w2))
+}) |>
+  t()
+
+ids_all <- levels(d$id)
+refit_boot <- apply(boot_dim_idx, 2, function(i) {
+  samp <- ids_all[i]
+  db <- map_dfr(seq_along(samp), function(k) d |> filter(id == samp[k]) |> mutate(bid = k))
+  p <- prcomp(db[, ATTR], center = TRUE, scale. = TRUE)
+  a <- sign(p$rotation["a1", 1])
+  b <- sign(p$rotation["a3", 2])
+  db$z1 <- as.numeric(scale(p$x[, 1] * a))
+  db$z2 <- as.numeric(scale(p$x[, 2] * b))
+  x <- db |>
+    group_by(bid, water) |>
+    summarise(z1 = mean(z1), z2 = mean(z2), .groups = "drop") |>
+    pivot_wider(names_from = water, values_from = c(z1, z2))
+  c(PC1 = mean(x$z1_1 - x$z1_0), PC2 = mean(x$z2_1 - x$z2_0),
+    contrast = mean((x$z1_1 - x$z1_0) - (x$z2_1 - x$z2_0)))
+}) |>
+  t()
+
+rq2_pca_robustness <- tibble(
+  check = c("Within-participant PCA: PC1 stream effect",
+            "Within-participant PCA: PC2 stream effect",
+            "Within-participant PCA: direct PC1-PC2 contrast",
+            "PCA re-estimated per replicate: PC1 stream effect",
+            "PCA re-estimated per replicate: PC2 stream effect",
+            "PCA re-estimated per replicate: direct PC1-PC2 contrast"),
+  estimate = c(mean(within_pair$d_w1), mean(within_pair$d_w2),
+               mean(within_pair$d_w1 - within_pair$d_w2),
+               dim_points[["PC1"]], dim_points[["PC2"]], dim_points[["PCA_contrast"]]),
+  lo = c(apply(within_boot, 2, q_ci)[1, ], apply(refit_boot, 2, q_ci)[1, ]),
+  hi = c(apply(within_boot, 2, q_ci)[2, ], apply(refit_boot, 2, q_ci)[2, ]),
+  p = c(t.test(within_pair$d_w1)$p.value, t.test(within_pair$d_w2)$p.value,
+        t.test(within_pair$d_w1 - within_pair$d_w2)$p.value, NA, NA, NA),
+  variance_pc1 = c(rep(pc_w$sdev[1]^2 / sum(pc_w$sdev^2), 3), rep(NA, 3)),
+  variance_pc2 = c(rep(pc_w$sdev[2]^2 / sum(pc_w$sdev^2), 3), rep(NA, 3))
+)
+write_csv(rq2_pca_robustness, file.path(LOCK_DIR, "rq2_pca_robustness.csv"))
+
+# RQ3: each held-out prediction turned into a withholding rule (no stream where
+# the predicted benefit is not positive), scored on the benefit actually
+# observed in the withheld and the served cases.
+withhold_stats <- function(z, w = rep(1, nrow(z))) {
+  held <- z$predicted <= 0
+  c(
+    withheld_share = sum(w * held) / sum(w),
+    observed_withheld = sum(w * z$observed * held) / sum(w * held),
+    realised_rule = sum(w * z$observed * !held) / sum(w),
+    realised_universal = sum(w * z$observed) / sum(w)
+  )
+}
+withholding_rule <- map_dfr(levels(all_predictions$model), function(nm) {
+  z <- all_predictions |> filter(model == nm)
+  point <- withhold_stats(z)
+  ids <- unique(z$id)
+  bs <- replicate(B, {
+    counts <- tabulate(sample(seq_along(ids), length(ids), replace = TRUE),
+                       nbins = length(ids))
+    withhold_stats(z, counts[match(z$id, ids)])
+  }) |>
+    t()
+  tibble(
+    model = nm, n_cases = nrow(z), n_withheld = sum(z$predicted <= 0),
+    metric = names(point), estimate = as.numeric(point),
+    lo = apply(bs, 2, q_ci)[1, ], hi = apply(bs, 2, q_ci)[2, ]
+  )
+})
+write_csv(withholding_rule, file.path(LOCK_DIR, "rq3_withholding_rule.csv"))
+
+# -----------------------------------------------------------------------------
 # Frozen multiplicity/estimand map and manuscript macros.
 multiplicity_map <- tribble(
   ~rq, ~role, ~family, ~inferential_rule,
@@ -573,7 +715,10 @@ multiplicity_map <- tribble(
   "RQ2", "Sensitivity", "Transparent activation composite", "Reported in SI to delimit the orthogonal-axis interpretation",
   "RQ3", "Reach", "Positive participant means", "Exact binomial CI",
   "RQ3", "Targeting", "Four held-out strategies", "Skill versus universal mean with participant-cluster bootstrap CIs",
-  "Supporting", "Physiology", "Prespecified compact marker set", "90% effect intervals plus SPL positive-control sensitivity; no mechanism claim"
+  "Supporting", "Physiology", "Declared compact marker set", "90% effect intervals plus SPL positive-control sensitivity; no mechanism claim",
+  "RQ1", "Post-review sensitivity (2026-09-18)", "Participant-specific stream slopes", "Same pooled contrast under a random-slope model; SI table row only, no new claim",
+  "RQ2", "Post-review sensitivity (2026-09-18)", "ISO eventfulness; within-participant PCA; PCA re-estimated per replicate", "Reported in SI beside the declared proxy; delimits, never anchors, the dimension claim",
+  "RQ3", "Post-review sensitivity (2026-09-18)", "Withholding rule per strategy", "Descriptive realised-benefit comparison with participant-cluster bootstrap CIs; no test"
 )
 write_csv(multiplicity_map, file.path(LOCK_DIR, "multiplicity_map.csv"))
 

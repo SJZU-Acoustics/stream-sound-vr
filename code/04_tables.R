@@ -122,10 +122,10 @@ s2_levels <- rq1_level |>
 s2_robust <- rq1_robust |>
   transmute(
     Section = "Robustness",
-    Quantity = method,
+    Quantity = if_else(is.na(note) | note == "", method, paste0(method, " (", note, ")")),
     Estimate = paste0(signed_num(estimate), " ISO points"),
     Interval = paste0(interval, " ", ci_text(lo, hi)),
-    P = "--",
+    P = p_text(p),
     Holm_P = "--"
   )
 
@@ -175,18 +175,33 @@ effect_labels <- c(
   PC1 = "Valence-like axis (PC1)",
   PC2 = "Activation-like axis (PC2)",
   PCA_contrast = "Direct PC1-PC2 contrast",
-  ISO = "Simple ISO valence proxy",
-  activation_proxy = "Simple activation proxy",
-  transparent_contrast = "Direct simple-proxy contrast"
+  ISO = "ISO pleasantness coordinate",
+  activation_proxy = "Simple activation composite",
+  transparent_contrast = "Direct ISO pleasantness-composite contrast",
+  ISO_eventful = "ISO eventfulness coordinate",
+  iso_pair_contrast = "Direct ISO pleasantness-eventfulness contrast"
 )
 s3_effects <- rq2_effects |>
   mutate(
-    Section = if_else(metric %in% c("PC1", "PC2", "PCA_contrast"), "Effects", "Proxy sensitivity"),
+    Section = if_else(metric %in% c("PC1", "PC2", "PCA_contrast"), "Effects", "Alternative axes"),
     Quantity = unname(effect_labels[metric])
   ) |>
   transmute(
     Section,
     Quantity,
+    Estimate = paste0(signed_num(estimate), " SD"),
+    Interval = paste0("95% participant-bootstrap CI ", ci_text(lo, hi, signed = TRUE)),
+    P = p_text(p)
+  )
+
+# Axis robustness (post-review sensitivity, 2026-09-18): the direct contrast
+# under within-participant PCA and with the PCA re-estimated per replicate.
+pca_robust <- read.csv(file.path(LOCK_DIR, "rq2_pca_robustness.csv"), check.names = FALSE)
+s3_robust <- pca_robust |>
+  filter(grepl("direct PC1-PC2 contrast", check)) |>
+  transmute(
+    Section = "Axis robustness",
+    Quantity = sub(": direct PC1-PC2 contrast", ", direct PC1-PC2 contrast", check),
     Estimate = paste0(signed_num(estimate), " SD"),
     Interval = paste0("95% participant-bootstrap CI ", ci_text(lo, hi, signed = TRUE)),
     P = p_text(p)
@@ -212,8 +227,8 @@ s3_translation <- bind_rows(
   geometry_row("iso_db_credit", "Translation", "ISO valence-equivalent credit", " dB")
 )
 
-s3 <- bind_rows(s3_structure, s3_effects, s3_translation)
-write_display_table(s3, "Table_S3_rq2_dimensions", c(2.2, 5.2, 3.0, 4.1, 1.1))
+s3 <- bind_rows(s3_structure, s3_effects, s3_robust, s3_translation)
+write_display_table(s3, "Table_S3_rq2_dimensions", c(2.2, 5.1, 3.0, 4.1, 1.1))
 
 # Table S4: RQ3 reach, stability, held-out prediction, and relevant checks.
 reach <- read.csv(file.path(LOCK_DIR, "rq3_reach.csv"), check.names = FALSE)
@@ -272,7 +287,24 @@ s4_psychometric <- psychometric |>
     P = p_text(p)
   )
 
-s4 <- bind_rows(s4_reach, s4_stability, s4_prediction, s4_reliability, s4_psychometric)
+# Withholding rule (post-review sensitivity, 2026-09-18): benefit realised per
+# person when each strategy withholds the stream where predicted benefit <= 0,
+# against universal provision, with the observed benefit among withheld cases.
+withholding <- read.csv(file.path(LOCK_DIR, "rq3_withholding_rule.csv"), check.names = FALSE)
+s4_withholding <- withholding |>
+  select(model, n_cases, n_withheld, metric, estimate, lo, hi) |>
+  pivot_wider(names_from = metric, values_from = c(estimate, lo, hi)) |>
+  transmute(
+    Section = "Withholding rule",
+    Quantity = paste0(model, ": realised benefit per person (", n_withheld, "/", n_cases, " cases withheld)"),
+    Estimate = paste0(plain_num(estimate_realised_rule), " ISO points versus ",
+                      plain_num(estimate_realised_universal), " under universal provision"),
+    Interval = paste0("Observed benefit among withheld cases ", signed_num(estimate_observed_withheld),
+                      ", 95% participant-bootstrap CI ", ci_text(lo_observed_withheld, hi_observed_withheld, signed = TRUE)),
+    P = "--"
+  )
+
+s4 <- bind_rows(s4_reach, s4_stability, s4_prediction, s4_withholding, s4_reliability, s4_psychometric)
 write_display_table(s4, "Table_S4_rq3_delivery", c(2.2, 5.3, 2.6, 4.2, 1.1))
 
 # Table S5: physiology calibration. This table is landscape in the SI document.

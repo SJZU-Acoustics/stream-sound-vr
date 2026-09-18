@@ -7,9 +7,9 @@ source("code/00_setup.R")
 screen <- read_csv(file.path(LOCK_DIR, "rq1_outcome_screen.csv"), show_col_types = FALSE)
 robust <- read_csv(file.path(LOCK_DIR, "rq1_robustness.csv"), show_col_types = FALSE)
 
-screen_order <- c("ISO pleasantness", "Annoying - pleasant", "Noisy - calm",
-                  "Pleasant", "Noisy/chaotic", "Lively", "Bland", "Calm",
-                  "Annoying", "Immersive", "Dull")
+screen_order <- c("ISO pleasantness", "Annoying - pleasant", "Chaotic - calm",
+                  "Pleasant", "Chaotic", "Vibrant", "Uneventful", "Calm",
+                  "Annoying", "Eventful", "Monotonous")
 screen <- screen |>
   mutate(
     label = factor(label, levels = rev(screen_order)),
@@ -23,7 +23,9 @@ pS1a <- ggplot(screen, aes(dz, label)) +
                                  "Attribute" = COL_MID)) +
   scale_shape_manual(values = c(`TRUE` = 19, `FALSE` = 21),
                      labels = c(`TRUE` = "Holm P < .05", `FALSE` = "Holm P ≥ .05")) +
-  scale_x_continuous(limits = c(-0.82, 0.82), breaks = c(-0.8, -0.4, 0, 0.4, 0.8)) +
+  # Limits must enclose every interval: ggplot drops an out-of-range segment
+  # silently (the Pleasant interval, upper bound 0.89, was lost at 0.82).
+  scale_x_continuous(limits = c(-0.95, 0.95), breaks = c(-0.8, -0.4, 0, 0.4, 0.8)) +
   # Extra headroom above the top category so the panel tag "a" does not
   # collide with the "ISO pleasantness" label.
   scale_y_discrete(expand = expansion(add = c(0.6, 1.2))) +
@@ -31,7 +33,10 @@ pS1a <- ggplot(screen, aes(dz, label)) +
   theme_p17() +
   theme(legend.position = "bottom", legend.box = "vertical")
 
+# Panel b shows the distributional checks only; the participant-specific-slope
+# model row of rq1_robustness.csv is reported in Table S2.
 robust <- robust |>
+  filter(method %in% c("Participant mean", "Median", "20% trimmed mean", "Leave-one-out mean")) |>
   mutate(method = factor(method, levels = rev(c("Participant mean", "Median", "20% trimmed mean", "Leave-one-out mean"))))
 pS1b <- ggplot(robust, aes(estimate, method)) +
   geom_vline(xintercept = 0, colour = COL_MID, linewidth = 0.35) +
@@ -50,8 +55,8 @@ save_figure(figS1, file.path(SI_FIG_DIR, "Figure_S1_rq1_robustness.png"), 178, 9
 # -----------------------------------------------------------------------------
 # Figure S2: RQ2 loadings and sensitivity to a transparent activation composite.
 loadings <- read_csv(file.path(LOCK_DIR, "pca_loadings.csv"), show_col_types = FALSE) |>
-  mutate(label = factor(label, levels = rev(c("Pleasant", "Noisy/chaotic", "Lively", "Bland",
-                                              "Calm", "Annoying", "Immersive", "Dull"))))
+  mutate(label = factor(label, levels = rev(c("Pleasant", "Chaotic", "Vibrant", "Uneventful",
+                                              "Calm", "Annoying", "Eventful", "Monotonous"))))
 dim_eff <- read_csv(file.path(LOCK_DIR, "rq2_dimension_effects.csv"), show_col_types = FALSE)
 
 pS2a <- ggplot(loadings, aes(component, label, fill = loading)) +
